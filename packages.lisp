@@ -44,6 +44,10 @@
            :conc
            :convert-attributes
            :convert-tag-to-string-list
+           :*who-macros*
+           :*who-stream*
+           :def-internal-macro
+           :emb
            :esc
            :escape-char
            :escape-char-all
