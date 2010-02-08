@@ -1,0 +1,31 @@
+see doc/index.html for details
+
+Because I won't edit that raw HTML, what follows is the description of
+some additions in this fork of CL-WHO.
+
+* XML namespaces
+
+Basically, you can now use the syntax (:PREFIX . TAG) in every position
+normally only a keyword would work.  The prefix has to be a keyword so
+using a macro in that position will still work; the tag has no
+restriction, it's not evaluated, so the following examples will work.
+
+    (with-html-output (*standard-output* NIL)
+      ((:xsl . stylesheet) :version 1.0
+        ((:xsl . template) :match "@*|node()"
+          ((:xsl . copy)
+            ((:xsl . apply-templates) :select "@*|node()")))))
+
+    (with-html-output (*standard-output* NIL)
+      ((:p :class "foo") "Paragraph")
+      (((:html . p) (:html . class) "foo") "Paragraph"))
+
+The next two examples will throw an error, but the point is that the
+macro ESC is still called instead of being converted to the tag
+"esc:foo" or the sequence "esc:foo='blub'".
+
+    (with-html-output (*standard-output* NIL)
+      ((esc . "foo") "Paragraph"))
+
+    (with-html-output (*standard-output* NIL)
+      ((:p (esc . "foo") "blub") "Paragraph"))
