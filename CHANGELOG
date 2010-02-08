@@ -36,6 +36,13 @@ Test portability fixes and improvements (Nikodemus Siivola)
 New *HTML-NO-INDENT-TAGS* variable to selectively suppress indentation (Nikodemus Siivola)
 Lock package on SBCL (Nikodemus Siivola)
 
+Version 0.11.X
+2010-02-08
+Added refactoring of the internal infrasctructure according to the 3rd variant,
+described in http://lisp-univ-etc.blogspot.com/2009/03/cl-who-macros.html
+Exported DEF-INTERNAL-MACRO and *WHO-MACROS*
+(See documentation for details)
+
 Version 0.11.1
 2008-03-28
 Replaced T with t to be friendly to AllegroCL's "modern" mode (thanks to John Maraist)
