@@ -162,6 +162,11 @@ character set."
   "Formats a cons cell with a namespace prefix and a tag into a string."
   (format NIL "~A:~A" (car cons) (cdr cons)))
 
+(defun namespace-tag-p (cons)
+  (and (listp cons)
+       (keywordp (first cons))
+       (atom (cdr cons))))
+
 (defun process-tag (sexp body-fn)
   (declare (optimize speed space))
   "Returns a string list corresponding to the `HTML' \(in CL-WHO
@@ -172,10 +177,7 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 	(setq tag sexp)
 	(let ((first (first sexp)))
 	  (cond
-	    ((or (atom first)
-		 (and (listp first)
-		      (keywordp (first first))
-		      (atom (cdr first))))
+	    ((or (atom first) (namespace-tag-p first))
 	     (setq tag (if (atom first)
 			   first
 			   (namespace-tag first)))
@@ -185,9 +187,7 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 		as first = (first rest)
 		if (keywordp first)
 		collect (cons first (second rest)) into attr
-		else if (and (listp first)
-			     (keywordp (first first))
-			     (atom (cdr first)))
+		else if (namespace-tag-p first)
 		collect (cons (namespace-tag first) (second rest)) into attr
 		else
 		do (progn (setq attr-list attr)
@@ -195,11 +195,16 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 			  (return))
 		finally (setq attr-list attr)))
 	    ((listp first)
-	     (setq tag (first first))
+	     (let ((maybe-tag (first first)))
+	       (setq tag (if (namespace-tag-p maybe-tag)
+			     (namespace-tag maybe-tag)
+			     maybe-tag)))
 	     (loop for rest on (cdr first) by #'cddr
 		as first = (first rest)
 		if (keywordp first)
 		collect (cons first (second rest)) into attr
+		else if (namespace-tag-p first)
+		collect (cons (namespace-tag first) (second rest)) into attr
 		finally (setq attr-list attr))
 	     (setq body (cdr sexp))))))
     (convert-tag-to-string-list tag attr-list body body-fn)))
@@ -347,7 +352,8 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
                               (keywordp (first element)))
                          (and (listp element)
                               (listp (first element))
-                              (keywordp (first (first element)))))
+			      (or (keywordp (first (first element)))
+				  (namespace-tag-p (first (first element))))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
                     (t
