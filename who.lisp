@@ -336,6 +336,7 @@ supplied."
                                       &body body)
   "Transform the enclosed BODY consisting of HTML as s-expressions
 into Lisp code which creates the corresponding HTML as a string."
+  (declare (ignorable element-type))
   `(with-output-to-string (,var ,string-form
                                 #-(or :ecl :cmu :sbcl) :element-type
                                 #-(or :ecl :cmu :sbcl) ,element-type)
