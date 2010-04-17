@@ -257,10 +257,7 @@ TREE-TO-COMMANDS."
 in STRING-COLLECTOR."
              (list 'write-string
                    (string-list-to-string (nreverse string-collector))
-                   stream))
-           (tree-to-commands-aux-internal (tree)
-             "Same as TREE-TO-COMMANDS-AUX but with closed-over STREAM."
-             (tree-to-commands-aux tree stream)))
+                   stream)))
       (unless (listp tree)
         (return-from tree-to-commands-aux tree))
       (loop for element in tree
