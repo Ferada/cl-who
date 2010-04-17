@@ -155,34 +155,48 @@ for STRING which'll just be returned."
 character set."
     (escape-string string :test #'non-7bit-ascii-escape-char-p)))
 
+(defun namespace-tag (cons)
+  "Formats a cons cell with a namespace prefix and a tag into a string."
+  (format NIL "~A:~A" (car cons) (cdr cons)))
+
 (defun process-tag (sexp body-fn)
   (declare (optimize speed space))
   "Returns a string list corresponding to the `HTML' \(in CL-WHO
 syntax) in SEXP.  Uses the generic function CONVERT-TO-STRING-LIST
 internally.  Utility function used by TREE-TO-TEMPLATE."
   (let (tag attr-list body)
-    (cond
-      ((keywordp sexp)
-       (setq tag sexp))
-      ((atom (first sexp))
-       (setq tag (first sexp))
-       ;; collect attribute/value pairs into ATTR-LIST and tag body (if
-       ;; any) into BODY
-       (loop for rest on (cdr sexp) by #'cddr
-             if (keywordp (first rest))
-               collect (cons (first rest) (second rest)) into attr
-             else
-               do (progn (setq attr-list attr)
-                         (setq body rest)
-                         (return))
-             finally (setq attr-list attr)))
-      ((listp (first sexp))
-       (setq tag (first (first sexp)))
-       (loop for rest on (cdr (first sexp)) by #'cddr
-             if (keywordp (first rest))
-               collect (cons (first rest) (second rest)) into attr
-             finally (setq attr-list attr))
-       (setq body (cdr sexp))))
+    (if (keywordp sexp)
+	(setq tag sexp)
+	(let ((first (first sexp)))
+	  (cond
+	    ((or (atom first)
+		 (and (listp first)
+		      (atom (cdr first))))
+	     (setq tag (if (atom first)
+			   first
+			   (namespace-tag first)))
+	     ;; collect attribute/value pairs into ATTR-LIST and tag body (if
+	     ;; any) into BODY
+	     (loop for rest on (cdr sexp) by #'cddr
+		as first = (first rest)
+		if (keywordp first)
+		collect (cons first (second rest)) into attr
+		else if (and (listp first)
+			     (atom (cdr first)))
+		collect (cons (namespace-tag first) (second rest)) into attr
+		else
+		do (progn (setq attr-list attr)
+			  (setq body rest)
+			  (return))
+		finally (setq attr-list attr)))
+	    ((listp first)
+	     (setq tag (first first))
+	     (loop for rest on (cdr first) by #'cddr
+		as first = (first rest)
+		if (keywordp first)
+		collect (cons first (second rest)) into attr
+		finally (setq attr-list attr))
+	     (setq body (cdr sexp))))))
     (convert-tag-to-string-list tag attr-list body body-fn)))
 
 (defun convert-attributes (attr-list)
