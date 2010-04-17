@@ -56,8 +56,9 @@ XHTML and :HTML5 for HTML5 (HTML syntax)."
   (format NIL "~A:~A" (car cons) (cdr cons)))
 
 (defun namespace-tag-p (cons)
+  "Checks if CONS forms a namespace prefixed tag."
   (and (listp cons)
-       (keywordp (first cons))
+       (keywordp (car cons))
        (atom (cdr cons))))
 
 (defun process-tag (sexp body-fn)
@@ -239,12 +240,13 @@ only leaves) which pass TEST."
 flattened list of strings. Utility function used by TREE-TO-COMMANDS."
   (loop for element in tree
         nconc (cond ((or (keywordp element)
-                         (and (listp element)
-                              (keywordp (first element)))
-                         (and (listp element)
-                              (listp (first element))
-			      (or (keywordp (first (first element)))
-				  (namespace-tag-p (first (first element))))))
+			 (when (listp element)
+			   (let ((first (first element)))
+			     (or (keywordp first)
+				 (when (listp first)
+				   (let ((first (first first)))
+				     (or (keywordp first)
+					 (namespace-tag-p first))))))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
                     (t
