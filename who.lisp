@@ -67,6 +67,7 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 	  (cond
 	    ((or (atom first)
 		 (and (listp first)
+		      (keywordp (first first))
 		      (atom (cdr first))))
 	     (setq tag (if (atom first)
 			   first
@@ -78,6 +79,7 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 		if (keywordp first)
 		collect (cons first (second rest)) into attr
 		else if (and (listp first)
+			     (keywordp (first first))
 			     (atom (cdr first)))
 		collect (cons (namespace-tag first) (second rest)) into attr
 		else
