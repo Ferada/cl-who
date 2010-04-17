@@ -73,8 +73,10 @@ the predicate TEST.  Always returns a string."
       (#\& "&amp;")
       (#\' "&#039;")
       (#\" "&quot;")
-      (t (format nil (if (eq *html-mode* :xml) "&#x~x;" "&#~d;")
-                 (char-code char))))
+      (t (let ((code (char-code char)))
+	   (if (eq *html-mode* :xml)
+	       (format nil "&#x~x;" code)
+	       (format nil "&#~d;" code)))))
     (make-string 1 :initial-element char)))
 
 (defun escape-string (string &key (test *escape-char-p*))
@@ -82,6 +84,7 @@ the predicate TEST.  Always returns a string."
   "Escape all characters in STRING which pass TEST. This function is
 not guaranteed to return a fresh string.  Note that you can pass NIL
 for STRING which'll just be returned."
+  (check-type string string)
   (let ((first-pos (position-if test string))
         (format-string (if (eq *html-mode* :xml) "&#x~x;" "&#~d;")))
     (if (not first-pos)
@@ -363,10 +366,7 @@ TREE-TO-COMMANDS."
 in STRING-COLLECTOR."
              (list 'write-string
                    (string-list-to-string (nreverse string-collector))
-                   stream))
-           (tree-to-commands-aux-internal (tree)
-             "Same as TREE-TO-COMMANDS-AUX but with closed-over STREAM."
-             (tree-to-commands-aux tree stream)))
+                   stream)))
       (unless (listp tree)
         (return-from tree-to-commands-aux tree))
       (loop for element in tree
