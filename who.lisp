@@ -436,9 +436,7 @@ in STRING-COLLECTOR."
 into Lisp code to write the corresponding HTML as strings to VAR -
 which should either hold a stream or which'll be bound to STREAM if
 supplied."
-  (when (and *indent*
-             (not (integerp *indent*))
-             (not (plusp *indent*)))
+  (unless (and (integerp *indent*) (minusp *indent*))
     (setq *indent* 0))
   (when (eql prologue t)
     (setq prologue *prologue*))
