@@ -436,7 +436,7 @@ in STRING-COLLECTOR."
 into Lisp code to write the corresponding HTML as strings to VAR -
 which should either hold a stream or which'll be bound to STREAM if
 supplied."
-  (unless (and (integerp *indent*) (minusp *indent*))
+  (when (and *indent* (or (not (integerp *indent*)) (minusp *indent*)))
     (setq *indent* 0))
   (when (eql prologue t)
     (setq prologue *prologue*))
@@ -462,8 +462,7 @@ into Lisp code which creates the corresponding HTML as a string."
                                          ((:indent *indent*) *indent*))
                                &body body)
   "Show the macro expansion of WITH-HTML-OUTPUT."
-  (when (and *indent*
-             (not (integerp *indent*)))
+  (when (and *indent* (or (not (integerp *indent*)) (minusp *indent*)))
     (setq *indent* 0))
   (when (eq prologue t)
     (setq prologue *prologue*))
