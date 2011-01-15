@@ -121,3 +121,6 @@ mode and HTML5 mode).  For all other tags, it will always generate
 
 (defvar *xml-namespace* NIL
   "Namespace prefix for XML mode. NIL means no prefix.")
+
+(defvar *xml-attribute-namespace* NIL
+  "Attribute namespace prefix for XML mode. NIL means no prefix.")
