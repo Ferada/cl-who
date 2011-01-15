@@ -158,7 +158,7 @@ for STRING which'll just be returned."
 character set."
     (escape-string string :test #'non-7bit-ascii-escape-char-p)))
 
-(defun convert-tag/attr-to-string (tag)
+(defun convert-tag/attr-to-string (tag &optional attrp)
   "Formats a symbol or a cell with a namespace prefix and a tag into a
 string. If the prefix is NIL, it isn't printed, if it is T,
 *XML-NAMESPACE* is used as prefix. Formatting of symbols is controlled
@@ -175,9 +175,9 @@ via *TOKEN-CASE*."
 	    (aux (if (consp tag)
 		     (let ((car (car tag)))
 		       (if (eq car T)
-			   *xml-namespace*
+			   (if attrp *xml-attribute-namespace* *xml-namespace*)
 			   car))
-		     *xml-namespace*))
+		     (if attrp *xml-attribute-namespace* *xml-namespace*)))
 	    (aux (if (consp tag) (cdr tag) tag)))))
 
 (defun namespace-tag-p (cons)
@@ -231,7 +231,7 @@ forms."
   (loop with =var= = (gensym)
         with attribute-quote = (string *attribute-quote-char*)
         for (orig-attr . val) in attr-list
-        for attr = (convert-tag/attr-to-string orig-attr)
+        for attr = (convert-tag/attr-to-string orig-attr T)
         unless (null val) ;; no attribute at all if VAL is NIL
           if (constantp val)
             if (and (eq *html-mode* :sgml) (eq val t)) ; special case for SGML
@@ -542,8 +542,18 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   `(format *who-stream* ,form ,@rest))
 
 (def-internal-macro xmlns (form &rest rest)
-  (let ((*xml-namespace* form))
-    (tree-to-commands rest '*who-stream*)))
+  (flet ((aux () (tree-to-commands rest '*who-stream*)))
+    (destructuring-bind (&optional (tag NIL tagp) (attr NIL attrp))
+	(if (atom form) (list form NIL) form)
+      (let ((*xml-namespace* (if tagp tag *xml-namespace*))
+	    (*xml-attribute-namespace* (if attrp attr *xml-attribute-namespace*)))
+	(aux)))))
+
+(def-internal-macro xmlns* ((&key (tag NIL tagp) (attr NIL attrp)) &rest rest)
+  (flet ((aux () (tree-to-commands rest '*who-stream*)))
+    (let ((*xml-namespace* (if tagp tag *xml-namespace*))
+	  (*xml-attribute-namespace* (if attrp attr *xml-attribute-namespace*)))
+      (aux))))
 
 (def-internal-macro token-case (form &rest rest)
   (let ((*token-case* form))
