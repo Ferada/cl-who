@@ -354,15 +354,6 @@ only leaves) which pass TEST."
        (apply-to-tree function test (cdr tree))))
     (t tree)))
 
-;; (def-internal-macro xmlns (form &rest rest)
-;;   (flet ((aux () (tree-to-commands rest '*who-stream*)))
-;;     (destructuring-bind (&optional tag attr)
-;; 	(if (atom form) (list form NIL) form)
-;;       (let ((*xml-namespace* tag)
-;; 	    (*xml-attribute-namespace* attr))
-;; 	(aux)))))
-
-
 (defun tree-to-template (tree)
   "Transforms an HTML tree into an intermediate format - mainly a
 flattened list of strings. Utility function used by TREE-TO-COMMANDS."
@@ -442,8 +433,7 @@ in STRING-COLLECTOR."
   ;; replace the special symbols ESC, STR, FMT, and HTM
   (tree-to-commands-aux
    (if prologue
-       (list* 'progn prologue +newline+
-              (tree-to-template (macroexpand-tree tree)))
+       (list* 'progn prologue (tree-to-template (macroexpand-tree tree)))
        (cons 'progn (tree-to-template (macroexpand-tree tree))))
    stream))
 
@@ -465,8 +455,9 @@ supplied."
     (setq *indent* 0))
   (when (eql prologue t)
     (setq prologue *prologue*))
-  `(let ((*who-stream* (or ,stream ,var)))
-    ,(tree-to-commands body '*who-stream* prologue)))
+  (let ((*who-stream* var))
+    `(let ((,var ,stream))
+       ,(tree-to-commands body var prologue))))
 
 (defmacro with-html-output-to-string ((var &optional string-form
                                            &key (element-type ''character)
@@ -531,14 +522,14 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 
 (def-internal-macro htm (&rest rest)
   "Defines macroexpasion for HTM special form."
-  (tree-to-commands rest '*who-stream*))
+  (tree-to-commands rest *who-stream*))
 
 (def-internal-macro str (form &rest rest)
   "Defines macroexpansion for STR special form."  
   (declare (ignore rest))
   (let ((result (gensym)))
     `(let ((,result ,form))
-       (when ,result (princ ,result *who-stream*)))))
+       (when ,result (princ ,result ,*who-stream*)))))
 
 (def-internal-macro esc (form &rest rest)
   "Defines macroexpansion for ESC special form."
@@ -546,11 +537,11 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   (let ((result (gensym)))
     `(let ((,result ,form))
        (when ,form (write-string (escape-string ,result)
-                                 *who-stream*)))))
+                                 ,*who-stream*)))))
 
 (def-internal-macro fmt (form &rest rest)
   "Defines macroexpansion for FMT special form."
-  `(format *who-stream* ,form ,@rest))
+  `(format ,*who-stream* ,form ,@rest))
 
 ;; another kind of macros, more like state changing functions for the tree formatter
 
