@@ -55,7 +55,7 @@ indentation dynamically.")
 
 (defvar *token-case* :downcase
   "Determines the case conversion for symbols. Valid values are :UPCASE,
-:DOWNCASE and NIL for no conversion.")
+:DOWNCASE, :CAPITALIZE and NIL for no conversion.")
 
 (defparameter *attribute-quote-char* #\'
   "Quote character for attributes.")
