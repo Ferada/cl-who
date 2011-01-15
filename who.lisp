@@ -254,7 +254,12 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 			 (when (listp element)
 			   (let ((first (first element)))
 			     (or (keywordp first)
-				 (namespace-tag-p first)))))
+				 (stringp first)
+				 (namespace-tag-p first)
+				 (when (listp first)
+				   (let ((first (first first)))
+				     (or (keywordp first)
+					 (namespace-tag-p first))))))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
                     (t
