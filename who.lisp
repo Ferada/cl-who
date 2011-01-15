@@ -62,17 +62,16 @@ via *TOKEN-CASE*."
 	       (case *token-case*
 		 (:upcase (string-upcase x))
 		 (:downcase (string-downcase x))
+		 (:capitalize (string-capitalize x))
 		 (T x)))))
-    (if (or (consp tag) *xml-namespace*)
-	(format NIL "~@[~A:~]~A"
-		(aux (if (consp tag)
-			 (let ((car (car tag)))
-			   (if (eq car T)
-			       *xml-namespace*
-			       car))
-			 *xml-namespace*))
-		(aux (if (consp tag) (cdr tag) tag)))
-	(format NIL "~A" (aux tag)))))
+    (format NIL "~@[~A:~]~A"
+	    (aux (if (consp tag)
+		     (let ((car (car tag)))
+		       (if (eq car T)
+			   *xml-namespace*
+			   car))
+		     *xml-namespace*))
+	    (aux (if (consp tag) (cdr tag) tag)))))
 
 (defun namespace-tag-p (cons)
   "Checks if CONS forms a namespace prefixed tag."
@@ -389,6 +388,7 @@ into Lisp code which creates the corresponding HTML as a string."
      (macroexpand-tree (macroexpand-1 subtree)))
    (lambda (subtree)
      (and (consp subtree)
+	  (not (namespace-tag-p subtree))
           (find (first subtree) *who-macros*)))
    tree))
 
@@ -433,9 +433,12 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   `(format *who-stream* ,form ,@rest))
 
 (def-internal-macro xmlns (form &rest rest)
-  `(let ((*xml-namespace* ,form))
-     (htm ,.rest)))
+  (let ((*xml-namespace* form))
+    (tree-to-commands rest '*who-stream*)))
 
+(def-internal-macro token-case (form &rest rest)
+  (let ((*token-case* form))
+    (tree-to-commands rest '*who-stream*)))
 
 ;; stuff for Nikodemus Siivola's HYPERDOC
 ;; see <http://common-lisp.net/project/hyperdoc/>
