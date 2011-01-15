@@ -158,15 +158,36 @@ for STRING which'll just be returned."
 character set."
     (escape-string string :test #'non-7bit-ascii-escape-char-p)))
 
-(defun namespace-tag (cons)
-  "Formats a cons cell with a namespace prefix and a tag into a string."
-  (format NIL "~A:~A" (car cons) (cdr cons)))
+(defun convert-tag/attr-to-string (tag)
+  "Formats a symbol or a cell with a namespace prefix and a tag into a
+string. If the prefix is NIL, it isn't printed, if it is T,
+*XML-NAMESPACE* is used as prefix. Formatting of symbols is controlled
+via *TOKEN-CASE*."
+  (flet ((aux (x)
+	   (if (or (stringp x) (null x))
+	       x
+	       (case *token-case*
+		 (:upcase (string-upcase x))
+		 (:downcase (string-downcase x))
+		 (T x)))))
+    (if (or (consp tag) *xml-namespace*)
+	(format NIL "~@[~A:~]~A"
+		(aux (if (consp tag)
+			 (let ((car (car tag)))
+			   (if (eq car T)
+			       *xml-namespace*
+			       car))
+			 *xml-namespace*))
+		(aux (if (consp tag) (cdr tag) tag)))
+	(format NIL "~A" (aux tag)))))
 
 (defun namespace-tag-p (cons)
   "Checks if CONS forms a namespace prefixed tag."
-  (and (listp cons)
-       (keywordp (car cons))
-       (atom (cdr cons))))
+  (and (consp cons)
+       (let ((car (car cons)))
+	 (or (keywordp car) (stringp car) (null car) (eq car T)))
+       (let ((cdr (cdr cons)))
+	 (and (not (null cdr)) (or (atom cdr) (stringp cdr))))))
 
 (defun process-tag (sexp body-fn)
   (declare (optimize speed space))
@@ -179,17 +200,13 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 	(let ((first (first sexp)))
 	  (cond
 	    ((or (atom first) (namespace-tag-p first))
-	     (setq tag (if (atom first)
-			   first
-			   (namespace-tag first)))
+	     (setq tag first)
 	     ;; collect attribute/value pairs into ATTR-LIST and tag body (if
 	     ;; any) into BODY
 	     (loop for rest on (cdr sexp) by #'cddr
 		as first = (first rest)
-		if (keywordp first)
+		if (or (keywordp first) (namespace-tag-p first))
 		collect (cons first (second rest)) into attr
-		else if (namespace-tag-p first)
-		collect (cons (namespace-tag first) (second rest)) into attr
 		else
 		do (progn (setq attr-list attr)
 			  (setq body rest)
@@ -197,15 +214,11 @@ internally.  Utility function used by TREE-TO-TEMPLATE."
 		finally (setq attr-list attr)))
 	    ((listp first)
 	     (let ((maybe-tag (first first)))
-	       (setq tag (if (namespace-tag-p maybe-tag)
-			     (namespace-tag maybe-tag)
-			     maybe-tag)))
+	       (setq tag maybe-tag))
 	     (loop for rest on (cdr first) by #'cddr
 		as first = (first rest)
-		if (keywordp first)
+		if (or (keywordp first) (namespace-tag-p first))
 		collect (cons first (second rest)) into attr
-		else if (namespace-tag-p first)
-		collect (cons (namespace-tag first) (second rest)) into attr
 		finally (setq attr-list attr))
 	     (setq body (cdr sexp))))))
     (convert-tag-to-string-list tag attr-list body body-fn)))
@@ -218,9 +231,7 @@ forms."
   (loop with =var= = (gensym)
         with attribute-quote = (string *attribute-quote-char*)
         for (orig-attr . val) in attr-list
-        for attr = (if *downcase-tokens-p*
-                     (string-downcase orig-attr)
-                     (string orig-attr))
+        for attr = (convert-tag/attr-to-string orig-attr)
         unless (null val) ;; no attribute at all if VAL is NIL
           if (constantp val)
             if (and (eq *html-mode* :sgml) (eq val t)) ; special case for SGML
@@ -278,7 +289,7 @@ a list of strings or Lisp forms."))
   "The standard method which is not specialized.  The idea is that you
 can use EQL specializers on the first argument."
   (declare (optimize speed space))
-  (let ((tag (if *downcase-tokens-p* (string-downcase tag) (string tag))))
+  (let ((tag (convert-tag/attr-to-string tag)))
     (nconc
      (if *indent*
        ;; indent by *INDENT* spaces
@@ -352,10 +363,7 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 			 (when (listp element)
 			   (let ((first (first element)))
 			     (or (keywordp first)
-				 (when (listp first)
-				   (let ((first (first first)))
-				     (or (keywordp first)
-					 (namespace-tag-p first))))))))
+				 (namespace-tag-p first)))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
                     (t
@@ -525,6 +533,10 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 (def-internal-macro fmt (form &rest rest)
   "Defines macroexpansion for FMT special form."
   `(format *who-stream* ,form ,@rest))
+
+(def-internal-macro xmlns (form &rest rest)
+  `(let ((*xml-namespace* ,form))
+     (htm ,.rest)))
 
 
 ;; stuff for Nikodemus Siivola's HYPERDOC
