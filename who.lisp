@@ -88,6 +88,7 @@ via *TOKEN-CASE*."
 syntax) in SEXP.  Uses the generic function CONVERT-TO-STRING-LIST
 internally.  Utility function used by TREE-TO-TEMPLATE."
   (let (tag attr-list body)
+    (logv:logv sexp)
     (if (keywordp sexp)
 	(setq tag sexp)
 	(let ((first (first sexp)))
@@ -250,11 +251,17 @@ only leaves) which pass TEST."
   "Transforms an HTML tree into an intermediate format - mainly a
 flattened list of strings. Utility function used by TREE-TO-COMMANDS."
   (loop for element in tree
-        nconc (cond ((or (keywordp element)
-			 (when (listp element)
-			   (let ((first (first element)))
-			     (or (keywordp first)
-				 (namespace-tag-p first)))))
+        do (logv:logv element)
+        nconc (cond ((logv:logv (or (keywordp element)
+				    (when (listp element)
+				      (let ((first (first element)))
+					(or (keywordp first)
+					    (stringp first)
+					    (namespace-tag-p first)
+					    (when (listp first)
+					      (let ((first (first first)))
+						(or (keywordp first)
+						    (namespace-tag-p first)))))))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
                     (t
