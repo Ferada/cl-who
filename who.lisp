@@ -261,10 +261,14 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 					 (namespace-tag-p first))))))))
                      ;; normal tag
                      (process-tag element #'tree-to-template))
+		    ;; inline macro, which doesn't break the stream
+		    ((and (listp element)
+			  (find (first element) *who-inline-macros*))
+		     (funcall (first element) element))
                     (t
                      (if *indent*
-                       (list +newline+ (n-spaces *indent*) element)
-                       (list element))))))
+			 (list +newline+ (n-spaces *indent*) element)
+			 (list element))))))
 
 (defun tree-to-commands-aux (tree stream)
   (declare (optimize speed space))
@@ -434,23 +438,40 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   "Defines macroexpansion for FMT special form."
   `(format *who-stream* ,form ,@rest))
 
-(def-internal-macro xmlns (form &rest rest)
-  (flet ((aux () (tree-to-commands rest '*who-stream*)))
-    (destructuring-bind (&optional (tag NIL tagp) (attr NIL attrp))
-	(if (atom form) (list form NIL) form)
+;; another kind of macros, more like state changing functions for the tree formatter
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *who-inline-macros* (make-array 0 :adjustable T :fill-pointer T)
+    "Vector of functions, which should do something macro like."))
+
+(defmacro def-internal-inline-macro (name attrs &body body)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     (prog1 (defun ,name ,attrs
+              ,.body)
+       (unless (find ',name *who-inline-macros*)
+         ;; the earlier the macro is defined, the faster it will be found
+         ;; (optimized for frequently used macros, like the inernal ones,
+         ;; defined first)
+         (vector-push-extend ',name *who-inline-macros*)))))
+
+(def-internal-inline-macro xmlns (element)
+  (let ((second (second element)))
+    (destructuring-bind (&optional tag attr) (if (atom second) (list second NIL) second)
+      (let ((*xml-namespace* tag)
+	    (*xml-attribute-namespace* attr))
+	(tree-to-template (nthcdr 2 element))))))
+
+(def-internal-inline-macro xmlns* (element)
+  (let ((second (second element)))
+    (destructuring-bind (&key (tag NIL tagp) (attr NIL attrp))
+	(if (atom second) (list second NIL) second)
       (let ((*xml-namespace* (if tagp tag *xml-namespace*))
 	    (*xml-attribute-namespace* (if attrp attr *xml-attribute-namespace*)))
-	(aux)))))
+	(tree-to-template (nthcdr 2 element))))))
 
-(def-internal-macro xmlns* ((&key (tag NIL tagp) (attr NIL attrp)) &rest rest)
-  (flet ((aux () (tree-to-commands rest '*who-stream*)))
-    (let ((*xml-namespace* (if tagp tag *xml-namespace*))
-	  (*xml-attribute-namespace* (if attrp attr *xml-attribute-namespace*)))
-      (aux))))
-
-(def-internal-macro token-case (form &rest rest)
-  (let ((*token-case* form))
-    (tree-to-commands rest '*who-stream*)))
+(def-internal-inline-macro token-case (element)  
+  (let ((*token-case* (second element)))
+    (tree-to-template (nthcdr 2 element))))
 
 ;; stuff for Nikodemus Siivola's HYPERDOC
 ;; see <http://common-lisp.net/project/hyperdoc/>
