@@ -44,6 +44,8 @@
            :*who-macros*
            :*who-stream*
            :*xml-namespace*
+           :*xml-namespace*
+           :*xml-attribute-namespace*
            :conc
            :convert-attributes
            :convert-tag-to-string-list
@@ -69,6 +71,7 @@
 	   :token-case
            :with-html-output
            :with-html-output-to-string
-           :xmlns))
+           :xmlns
+           :xmlns*))
 
 (pushnew :cl-who *features*)
