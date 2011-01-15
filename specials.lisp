@@ -124,3 +124,10 @@ mode and HTML5 mode).  For all other tags, it will always generate
 
 (defvar *xml-attribute-namespace* NIL
   "Attribute namespace prefix for XML mode. NIL means no prefix.")
+
+(defvar *external-format* '(:utf-8 :eol-style :lf)
+  "All strings will be converted to this format.")
+
+(defvar *compilep* NIL
+  "If set, strings will be precompiled using *EXTERNAL-FORMAT* and dynamic
+content will be converted on-demand.")
