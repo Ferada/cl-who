@@ -28,6 +28,7 @@
   :version "0.11.X"
   :description "Forked version of HTML generator with support for macro ~
 definition"
+  :depends-on (:flexi-streams)
   :serial t
   :components ((:file "packages")
                (:file "specials")
