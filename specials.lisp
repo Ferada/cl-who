@@ -53,10 +53,9 @@ indentation dynamically.")
 (defvar *html-mode* :xml
   ":SGML for \(SGML-)HTML, :XML \(default) for XHTML, :HTML5 for HTML5.")
 
-(defvar *downcase-tokens-p* t
-  "If NIL, a keyword symbol representing a tag or attribute name will
-not be automatically converted to lowercase.  This is useful when one
-needs to output case sensitive XML.")
+(defvar *token-case* :downcase
+  "Determines the case conversion for symbols. Valid values are :UPCASE,
+:DOWNCASE and NIL for no conversion.")
 
 (defvar *attribute-quote-char* #\'
   "Quote character for attributes.")
@@ -120,3 +119,5 @@ mode and HTML5 mode).  For all other tags, it will always generate
                                    :element-type 'base-char)
   "Used for indentation.")
 
+(defvar *xml-namespace* NIL
+  "Namespace prefix for XML mode. NIL means no prefix.")

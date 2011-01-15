@@ -37,10 +37,13 @@
   (:export :*attribute-quote-char*
            :*escape-char-p*
            :*prologue*
-           :*downcase-tokens-p*
            :*html-no-indent-tags*
            :*html-empty-tags*
            :*html-empty-tag-aware-p*
+           :*token-case*
+           :*who-macros*
+           :*who-stream*
+           :*xml-namespace*
            :conc
            :convert-attributes
            :convert-tag-to-string-list
@@ -64,6 +67,7 @@
            :html-mode
            :str
            :with-html-output
-           :with-html-output-to-string))
+           :with-html-output-to-string
+           :xmlns))
 
 (pushnew :cl-who *features*)
