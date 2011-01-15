@@ -67,3 +67,14 @@ helps to change this inside of a template:
       (:html
        (token-case :capitalize
          (:stylesheet :foo "foo")))))
+
+I currently don't know if it's useful to split this into tag, attribute
+and prefix variants, so I'll leave it be for now.
+
+* Inline macros
+
+Actually the above mentioned internal macros are executed using another
+facility, which doesn't break the stream into multiple chunks of
+WRITE-STRING.  It doesn't use macros but functions, which are recorded
+in *WHO-INTERNAL-MACROS* and executed inline with the TREE-TO-TEMPLATE
+function.  It isn't refactored and polished yet, but works good enough.
