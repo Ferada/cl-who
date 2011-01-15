@@ -78,7 +78,7 @@ via *TOKEN-CASE*."
   "Checks if CONS forms a namespace prefixed tag."
   (and (consp cons)
        (let ((car (car cons)))
-	 (or (keywordp car) (stringp car) (null car) (eq car T)))
+	 (or (symbolp car) (stringp car) (null car) (eq car T)))
        (let ((cdr (cdr cons)))
 	 (and (not (null cdr)) (or (atom cdr) (stringp cdr))))))
 
