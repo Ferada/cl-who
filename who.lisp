@@ -270,7 +270,7 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 			 (list +newline+ (n-spaces *indent*) element)
 			 (list element))))))
 
-(defun tree-to-commands-aux (tree stream)
+(defun tree-to-commands-aux (tree)
   (declare (optimize speed space))
   "Transforms the intermediate representation of an HTML tree into
 Lisp code to print the HTML to STREAM. Utility function used by
@@ -281,9 +281,10 @@ TREE-TO-COMMANDS."
     (flet ((emit-string-collector ()
              "Generate a WRITE-STRING statement for what is currently
 in STRING-COLLECTOR."
-             (list 'write-string
-                   (string-list-to-string (nreverse string-collector))
-                   stream)))
+             (let ((string (string-list-to-string (nreverse string-collector))))
+	       (if *compilep*
+		   `(write-sequence ,(flexi-streams:string-to-octets string :external-format *external-format*) ,*binary-stream*)
+		   `(write-string ,string ,*who-stream*)))))
       (unless (listp tree)
         (return-from tree-to-commands-aux tree))
       (loop for element in tree
@@ -317,7 +318,7 @@ in STRING-COLLECTOR."
                                               collector))
                               (nreverse collector)))))))
 
-(defun tree-to-commands (tree stream &optional prologue)
+(defun tree-to-commands (tree &optional prologue)
   (declare (optimize speed space))
   "Transforms an HTML tree into code to print the HTML to STREAM."
   ;; use TREE-TO-TEMPLATE, then TREE-TO-COMMANDS-AUX, and finally
@@ -325,18 +326,36 @@ in STRING-COLLECTOR."
   (tree-to-commands-aux
    (if prologue
        (list* 'progn prologue (tree-to-template (macroexpand-tree tree)))
-       (cons 'progn (tree-to-template (macroexpand-tree tree))))
-   stream))
+       (cons 'progn (tree-to-template (macroexpand-tree tree))))))
 
 
 ;; who
 
-(defparameter *who-stream* nil
-  "Dynamic variable that is bound to the html stream inside who-macro.")
+(defparameter *who-stream* NIL
+  "Dynamic variable that is bound to the html output stream.")
 
-(defmacro with-html-output ((var &optional stream
-                                 &key prologue
-                                      ((:indent *indent*) *indent*))
+(defparameter *binary-stream* NIL
+  "The plain binary stream for string pre-compilation.")
+
+(defmacro with-html-output-binary ((var &optional stream (binary (gensym "BINARY"))
+					&key prologue
+					     ((:indent *indent*) *indent*)
+					     ((:compilep *compilep*) *compilep*)
+					     ((:external-format *external-format*) *external-format*))
+				   &body body)
+  "Writes data to a binary stream using FLEXI-STREAMS.  If :COMPILEP is T,
+all static strings are pre-compiled into byte vectors of the specified :EXTERNAL-FORMAT."
+  (when (and *indent* (or (not (integerp *indent*)) (minusp *indent*)))
+    (setq *indent* 0))
+  (when (eql prologue t)
+    (setq prologue *prologue*))
+  (let ((*who-stream* var)
+	(*binary-stream* binary))
+    `(let* ((,binary ,stream)
+	    (,var (flexi-streams:make-flexi-stream ,binary :external-format ',*external-format*)))
+       ,(tree-to-commands body prologue))))
+
+(defmacro with-html-output ((var &optional stream &key prologue ((:indent *indent*) *indent*))
                             &body body)
   "Transform the enclosed BODY consisting of HTML as s-expressions
 into Lisp code to write the corresponding HTML as strings to VAR -
@@ -346,9 +365,10 @@ supplied."
     (setq *indent* 0))
   (when (eql prologue t)
     (setq prologue *prologue*))
-  (let ((*who-stream* var))
+  (let ((*who-stream* var)
+	*compilep*)
     `(let ((,var ,stream))
-       ,(tree-to-commands body var prologue))))
+       ,(tree-to-commands body prologue))))
 
 (defmacro with-html-output-to-string ((var &optional string-form
                                            &key (element-type ''character)
@@ -374,7 +394,9 @@ into Lisp code which creates the corresponding HTML as a string."
   (when (eq prologue t)
     (setq prologue *prologue*))
   `(pprint '(let ((,var ,(or stream var)))
-             ,(tree-to-commands body var prologue))))
+             ,(let ((*who-stream* var)
+		    *compilep*)
+		(tree-to-commands body prologue)))))
 
 
 ;; macros embedding (by Victor Kryukov victor.kryukov@gmail.com)
@@ -413,7 +435,7 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 
 (def-internal-macro htm (&rest rest)
   "Defines macroexpasion for HTM special form."
-  (tree-to-commands rest *who-stream*))
+  (tree-to-commands rest))
 
 (def-internal-macro str (form &rest rest)
   "Defines macroexpansion for STR special form."
@@ -427,8 +449,7 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   (declare (ignore rest))
   (let ((result (gensym)))
     `(let ((,result ,form))
-       (when ,form (write-string (escape-string ,result)
-                                 ,*who-stream*)))))
+       (when ,form (write-string (escape-string ,result) ,*who-stream*)))))
 
 (def-internal-macro fmt (form &rest rest)
   "Defines macroexpansion for FMT special form."

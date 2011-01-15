@@ -70,6 +70,7 @@
            :str
 	   :token-case
            :with-html-output
+           :with-html-output-binary
            :with-html-output-to-string
            :xmlns
            :xmlns*))
