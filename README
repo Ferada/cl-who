@@ -1,7 +1,10 @@
-see doc/index.html for details
+CL-WHO - Forked version of Edi Weitz's HTML generator with support for
+         macro definition, XML namespaces and more
 
-Because I won't edit that raw HTML, what follows is the description of
-some additions in this fork of CL-WHO.
+What follows is the description of some additions in this fork of
+CL-WHO, which are in short:  Support for XML namespaces, setting of
+output character case, inline macros and precompiled binary output.
+More documentation is also available in doc/index.html.
 
 * XML namespaces
 
@@ -78,3 +81,40 @@ facility, which doesn't break the stream into multiple chunks of
 WRITE-STRING.  It doesn't use macros but functions, which are recorded
 in *WHO-INTERNAL-MACROS* and executed inline with the TREE-TO-TEMPLATE
 function.  It isn't refactored and polished yet, but works good enough.
+
+* Binary output
+
+The WITH-HTML-OUTPUT-TO-STRING-BINARY macro may be used to convert all
+literal strings into byte vectors according to a given external format.
+FLEXI-STREAMS is used to both converted literals and support output via
+a FLEXI-STREAM for dynamic content.
+
+    (with-html-output-binary (stream *standard-output*)
+      (:body
+       (:p "Hello, World!"
+           (str "foo"))))
+
+Which works like the regular macro, except that now the *COMPILEP*
+variable (or the COMPILEP keyword) controls whether the output is
+converted to byte vectors.
+
+    (macroexpand
+     '(with-html-output-binary (stream *standard-output* binary :compilep T)
+        (:body
+          (:p "Hello, World!"
+              (str "foo")))))
+    
+    =>
+    
+    (LET* ((BINARY *STANDARD-OUTPUT*)
+           (STREAM
+            (FLEXI-STREAMS:MAKE-FLEXI-STREAM BINARY :EXTERNAL-FORMAT
+                                             '(:UTF-8 :EOL-STYLE :LF))))
+      (PROGN
+       (WRITE-SEQUENCE
+        #(60 98 111 100 121 62 60 112 62 72 101 108 108 111 44 32 87 111 114 108
+          100 33)
+        BINARY)
+       (LET ((#:G1465 "foo"))
+         (WHEN #:G1465 (PRINC #:G1465 STREAM)))
+       (WRITE-SEQUENCE #(60 47 112 62 60 47 98 111 100 121 62) BINARY)))
