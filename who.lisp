@@ -379,6 +379,12 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 			 (list +newline+ (n-spaces *indent*) element)
 			 (list element))))))
 
+(defparameter *who-stream* NIL
+  "Dynamic variable that is bound to the html output stream.")
+
+(defparameter *binary-stream* NIL
+  "The plain binary stream for string pre-compilation.")
+
 (defun tree-to-commands-aux (tree)
   (declare (optimize speed space))
   "Transforms the intermediate representation of an HTML tree into
@@ -439,12 +445,6 @@ in STRING-COLLECTOR."
 
 
 ;; who
-
-(defparameter *who-stream* NIL
-  "Dynamic variable that is bound to the html output stream.")
-
-(defparameter *binary-stream* NIL
-  "The plain binary stream for string pre-compilation.")
 
 (defmacro with-html-output-binary ((var &optional stream (binary (gensym "BINARY"))
 					&key prologue
