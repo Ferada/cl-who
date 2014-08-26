@@ -385,7 +385,7 @@ into Lisp code which creates the corresponding HTML as a string."
   `(with-output-to-string (,var ,string-form
                                 #-(or :ecl :cmu :sbcl) :element-type
                                 #-(or :ecl :cmu :sbcl) ,element-type)
-    (with-html-output (,var nil :prologue ,prologue :indent ,indent)
+    (with-html-output (,var ,var :prologue ,prologue :indent ,indent)
       ,@body)))
 
 (defmacro show-html-expansion ((var &optional stream
