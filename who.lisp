@@ -245,6 +245,10 @@ only leaves) which pass TEST."
        (apply-to-tree function test (cdr tree))))
     (t tree)))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *who-inline-macros* (make-array 0 :adjustable T :fill-pointer T)
+    "Vector of functions, which should do something macro like."))
+
 (defun tree-to-template (tree)
   "Transforms an HTML tree into an intermediate format - mainly a
 flattened list of strings. Utility function used by TREE-TO-COMMANDS."
@@ -456,10 +460,6 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   `(format ,*who-stream* ,form ,@rest))
 
 ;; another kind of macros, more like state changing functions for the tree formatter
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *who-inline-macros* (make-array 0 :adjustable T :fill-pointer T)
-    "Vector of functions, which should do something macro like."))
 
 (defmacro def-internal-inline-macro (name attrs &body body)
   `(eval-when (:compile-toplevel :load-toplevel :execute)
