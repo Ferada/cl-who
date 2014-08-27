@@ -148,21 +148,24 @@ forms."
                           (cond ((null ,=var=))
                                 ((eq ,=var= t)
                                  ,(case *html-mode*
-                                    (:sgml
-                                     `(fmt " ~A" ,attr))
-                                    ;; otherwise default to :xml mode
-                                    (t
-                                     `(fmt " ~A=~C~A~C"
-                                           ,attr
-                                           *attribute-quote-char*
-                                           ,attr
-                                           *attribute-quote-char*))))
+                                   (:sgml
+                                    (tree-to-commands (format nil " ~A" attr)))
+                                   ;; otherwise default to :xml mode
+                                   (t
+                                    (tree-to-commands
+                                     (list
+                                      (format nil " ~A=~C~A~C"
+                                              attr
+                                              *attribute-quote-char*
+                                              attr
+                                              *attribute-quote-char*))))))
                                 (t
-                                 (fmt " ~A=~C~A~C"
-                                      ,attr
-                                      *attribute-quote-char*
-                                      ,=var=
-                                      *attribute-quote-char*)))))))
+                                 ,(tree-to-commands
+                                   (list
+                                    (format nil " ~A=~C"
+                                            attr *attribute-quote-char*)
+                                    (%str =var=)
+                                    *attribute-quote-char*))))))))
 
 (defgeneric convert-tag-to-string-list (tag attr-list body body-fn)
   (:documentation "Used by PROCESS-TAG to convert `HTML' into a list
@@ -441,19 +444,28 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   "Defines macroexpasion for HTM special form."
   (tree-to-commands rest))
 
-(def-internal-macro str (form &rest rest)
-  "Defines macroexpansion for STR special form."
-  (declare (ignore rest))
+(defun %str (form)
   (let ((result (gensym)))
     `(let ((,result ,form))
        (when ,result (princ ,result ,*who-stream*)))))
 
+(def-internal-macro str (form &rest rest)
+  "Defines macroexpansion for STR special form."
+  (declare (ignore rest))
+  (%str form))
+
+(defun %esc (form)
+  (let ((result (gensym)))
+    `(let ((,result ,form))
+       (when ,form
+         (write-string
+          (escape-string ,result)
+          ,*who-stream*)))))
+
 (def-internal-macro esc (form &rest rest)
   "Defines macroexpansion for ESC special form."
   (declare (ignore rest))
-  (let ((result (gensym)))
-    `(let ((,result ,form))
-       (when ,form (write-string (escape-string ,result) ,*who-stream*)))))
+  (%esc form))
 
 (def-internal-macro fmt (form &rest rest)
   "Defines macroexpansion for FMT special form."
