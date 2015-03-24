@@ -283,6 +283,24 @@ flattened list of strings. Utility function used by TREE-TO-COMMANDS."
 (defparameter *binary-stream* NIL
   "The plain binary stream for string pre-compilation.")
 
+(defun %emit-string-collector (string)
+  (if *compilep*
+      `(write-sequence
+        ,(flexi-streams:string-to-octets
+          string
+          :external-format *external-format*)
+        ,*binary-stream*)
+      `(write-string ,string ,*who-stream*)))
+
+(defun %emit-format-collector (form rest)
+  `(format ,*who-stream* ,form ,@rest))
+
+(defvar *emit-string-collector*
+  #'%emit-string-collector)
+
+(defvar *emit-format-collector*
+  #'%emit-format-collector)
+
 (defun tree-to-commands-aux (tree)
   (declare (optimize speed space))
   "Transforms the intermediate representation of an HTML tree into
@@ -291,45 +309,42 @@ TREE-TO-COMMANDS."
   (let ((in-string t)
         collector
         string-collector)
+    (unless (listp tree)
+      (return-from tree-to-commands-aux tree))
     (flet ((emit-string-collector ()
-             "Generate a WRITE-STRING statement for what is currently
-in STRING-COLLECTOR."
-             (let ((string (string-list-to-string (nreverse string-collector))))
-	       (if *compilep*
-		   `(write-sequence ,(flexi-streams:string-to-octets string :external-format *external-format*) ,*binary-stream*)
-		   `(write-string ,string ,*who-stream*)))))
-      (unless (listp tree)
-        (return-from tree-to-commands-aux tree))
+             "Generate a WRITE-STRING statement for what is currently in STRING-COLLECTOR."
+             (funcall *emit-string-collector*
+                      (string-list-to-string (nreverse string-collector)))))
       (loop for element in tree
             do (cond ((and in-string (stringp element))
-                       ;; this element is a string and the last one
-                       ;; also was (or this is the first element) -
-                       ;; collect into STRING-COLLECTOR
-                       (push element string-collector))
+                      ;; this element is a string and the last one
+                      ;; also was (or this is the first element) -
+                      ;; collect into STRING-COLLECTOR
+                      (push element string-collector))
                      ((stringp element)
-                       ;; the last one wasn't a string so we start
-                       ;; with an empty STRING-COLLECTOR
-                       (setq string-collector (list element)
-                             in-string t))
+                      ;; the last one wasn't a string so we start
+                      ;; with an empty STRING-COLLECTOR
+                      (setq string-collector (list element)
+                            in-string t))
                      (string-collector
-                       ;; not a string but STRING-COLLECTOR isn't
-                       ;; empty so we have to emit the collected
-                       ;; strings first
-                       (push (emit-string-collector) collector)
-                       (setq in-string nil
-                             string-collector '())
-                       ;; collect this element but walk down the
-                       ;; subtree first
-                       (push element collector))
+                      ;; not a string but STRING-COLLECTOR isn't
+                      ;; empty so we have to emit the collected
+                      ;; strings first
+                      (push (emit-string-collector) collector)
+                      (setq in-string nil
+                            string-collector '())
+                      ;; collect this element but walk down the
+                      ;; subtree first
+                      (push element collector))
                      (t
-                       ;; not a string and empty STRING-COLLECTOR
-                       (push element collector)))
+                      ;; not a string and empty STRING-COLLECTOR
+                      (push element collector)))
             finally (return (if string-collector
-                              ;; finally empty STRING-COLLECTOR if
-                              ;; there's something in it
-                              (nreverse (cons (emit-string-collector)
-                                              collector))
-                              (nreverse collector)))))))
+                                ;; finally empty STRING-COLLECTOR if
+                                ;; there's something in it
+                                (nreverse (cons (emit-string-collector)
+                                                collector))
+                                (nreverse collector)))))))
 
 (defun tree-to-commands (tree &optional prologue)
   (declare (optimize speed space))
@@ -375,6 +390,7 @@ supplied."
   (let ((*who-stream* var)
 	*compilep*)
     `(let ((,var ,stream))
+       (declare (ignorable ,var))
        ,(tree-to-commands body prologue))))
 
 (defmacro with-html-output-to-string ((var &optional string-form
@@ -448,7 +464,8 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 (defun %str (form)
   (let ((result (gensym)))
     `(let ((,result ,form))
-       (when ,result (princ ,result ,*who-stream*)))))
+       (when ,result ,(funcall *emit-string-collector*
+                                `(princ-to-string ,result))))))
 
 (def-internal-macro str (form &rest rest)
   "Defines macroexpansion for STR special form."
@@ -459,9 +476,8 @@ multiple evaluation of macro arguments (frequently encountered) etc."
   (let ((result (gensym)))
     `(let ((,result ,form))
        (when ,form
-         (write-string
-          (escape-string ,result)
-          ,*who-stream*)))))
+         ,(funcall *emit-string-collector*
+                   (escape-string result))))))
 
 (def-internal-macro esc (form &rest rest)
   "Defines macroexpansion for ESC special form."
@@ -470,7 +486,7 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 
 (def-internal-macro fmt (form &rest rest)
   "Defines macroexpansion for FMT special form."
-  `(format ,*who-stream* ,form ,@rest))
+  (funcall *emit-format-collector* form rest))
 
 ;; another kind of macros, more like state changing functions for the tree formatter
 
