@@ -165,7 +165,7 @@ forms."
                                     (format nil " ~A=~C"
                                             attr *attribute-quote-char*)
                                     (%str =var=)
-                                    *attribute-quote-char*))))))))
+                                    (string *attribute-quote-char*)))))))))
 
 (defgeneric convert-tag-to-string-list (tag attr-list body body-fn)
   (:documentation "Used by PROCESS-TAG to convert `HTML' into a list
