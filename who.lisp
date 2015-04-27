@@ -475,9 +475,8 @@ multiple evaluation of macro arguments (frequently encountered) etc."
 (defun %esc (form)
   (let ((result (gensym)))
     `(let ((,result ,form))
-       (when ,form
-         ,(funcall *emit-string-collector*
-                   (escape-string result))))))
+       (when ,result ,(funcall *emit-string-collector*
+                               `(escape-string ,result))))))
 
 (def-internal-macro esc (form &rest rest)
   "Defines macroexpansion for ESC special form."
